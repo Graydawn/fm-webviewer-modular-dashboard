@@ -8,6 +8,7 @@ Welcome to the vibe coding exercise. Please claim one of the widgets below by ad
 | Calculator | |
 | Pomodoro Timer | |
 | Currency Converter | |
+| To Do List | kwyngaard |
 | [Custom Idea] | |
 
 ## How to add your widget:
