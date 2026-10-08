@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sleek To-Do App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Light gray background */
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        body.dark-mode {
+            background-color: #111827; /* Dark background */
+            color: #f9fafb; /* Light text */
+        }
+
+        /* Checkbox styling */
+        .checkbox-custom {
+            appearance: none;
+            width: 1.5rem;
+            height: 1.5rem;
+            border: 2px solid #d1d5db;
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .dark-mode .checkbox-custom {
+            border-color: #4b5563;
+        }
+
+        .checkbox-custom:checked {
+            background-color: #3b82f6;
+            border-color: #3b82f6;
+        }
+
+        .checkbox-custom:checked::after {
+            content: '';
+            position: absolute;
+            width: 0.375rem;
+            height: 0.75rem;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+            top: 0.125rem;
+        }
+
+        /* Task text styling when completed */
+        .task-text {
+            transition: color 0.3s ease, text-decoration 0.3s ease;
+        }
+
+        .completed .task-text {
+            text-decoration: line-through;
+            color: #9ca3af;
+        }
+
+        .dark-mode .completed .task-text {
+            color: #6b7280;
+        }
+
+        /* Task item animations */
+        .task-item {
+            transition: all 0.3s ease;
+            transform-origin: top;
+        }
+
+        .task-entering {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        .task-entered {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .task-leaving {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+        
+        /* Message Box styling */
+        #message-box {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 50;
+        }
+
+        #message-box.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* Scrollbar styling for dark mode */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: rgba(156, 163, 175, 0.5);
+            border-radius: 10px;
+        }
+        .dark-mode ::-webkit-scrollbar-thumb {
+            background-color: rgba(75, 85, 99, 0.5);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8">
+
+    <!-- Main Container -->
+    <div id="app-container" class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden transition-colors duration-300">
+        
+        <!-- Header Section -->
+        <div class="px-6 py-8 border-b border-gray-100 transition-colors duration-300" id="header-container">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-bold text-gray-800 transition-colors duration-300" id="app-title">Tasks</h1>
+                
+                <!-- Theme Toggle Button -->
+                <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Toggle Dark Mode">
+                    <!-- Sun Icon (for light mode) -->
+                    <svg id="sun-icon" class="w-6 h-6 text-gray-500 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                    <!-- Moon Icon (for dark mode) -->
+                    <svg id="moon-icon" class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Statistics -->
+            <div class="flex items-center text-sm text-gray-500 space-x-4 transition-colors duration-300" id="stats-container">
+                <div><span id="total-tasks" class="font-semibold text-blue-500">0</span> Total</div>
+                <div><span id="completed-tasks" class="font-semibold text-green-500">0</span> Done</div>
+            </div>
+
+            <!-- Add Task Form -->
+            <form id="add-task-form" class="mt-6 flex relative">
+                <input type="text" id="task-input" placeholder="What needs to be done?" class="w-full pl-4 pr-12 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all outline-none text-gray-700" autocomplete="off">
+                <button type="submit" class="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors shadow-sm" aria-label="Add Task">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                </button>
+            </form>
+        </div>
+
+        <!-- Task List Section -->
+        <div class="p-4 sm:p-6 h-[50vh] overflow-y-auto">
+            <ul id="task-list" class="space-y-3">
+                <!-- Tasks will be injected here by JavaScript -->
+            </ul>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="flex flex-col items-center justify-center h-full text-center py-10 opacity-0 hidden transition-opacity duration-300">
+                <svg class="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                </svg>
+                <p class="text-gray-500 text-lg font-medium">All caught up!</p>
+                <p class="text-gray-400 text-sm mt-1">Add a task to get started.</p>
+            </div>
+        </div>
+        
+        <!-- Filter/Clear Section -->
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center transition-colors duration-300" id="footer-container">
+            <div class="flex space-x-2 text-sm" id="filters">
+                <button class="filter-btn active font-medium text-blue-600 focus:outline-none" data-filter="all">All</button>
+                <button class="filter-btn text-gray-500 hover:text-gray-800 focus:outline-none transition-colors" data-filter="active">Active</button>
+                <button class="filter-btn text-gray-500 hover:text-gray-800 focus:outline-none transition-colors" data-filter="completed">Done</button>
+            </div>
+            <button id="clear-completed" class="text-sm text-red-500 hover:text-red-700 focus:outline-none hidden transition-colors">Clear Done</button>
+        </div>
+    </div>
+
+    <!-- Custom Message Box -->
+    <div id="message-box" class="bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-3">
+        <svg id="message-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <span id="message-text" class="text-sm font-medium">Message</span>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- State Management ---
+            let tasks = JSON.parse(localStorage.getItem('todo_tasks')) || [];
+            let currentFilter = 'all';
+            let isDarkMode = localStorage.getItem('todo_dark_mode') === 'true';
+
+            // --- DOM Elements ---
+            const form = document.getElementById('add-task-form');
+            const input = document.getElementById('task-input');
+            const taskList = document.getElementById('task-list');
+            const emptyState = document.getElementById('empty-state');
+            const totalTasksEl = document.getElementById('total-tasks');
+            const completedTasksEl = document.getElementById('completed-tasks');
+            const filterBtns = document.querySelectorAll('.filter-btn');
+            const clearCompletedBtn = document.getElementById('clear-completed');
+            
+            // Theme elements
+            const themeToggleBtn = document.getElementById('theme-toggle');
+            const sunIcon = document.getElementById('sun-icon');
+            const moonIcon = document.getElementById('moon-icon');
+            const appContainer = document.getElementById('app-container');
+            const headerContainer = document.getElementById('header-container');
+            const footerContainer = document.getElementById('footer-container');
+            const appTitle = document.getElementById('app-title');
+            const statsContainer = document.getElementById('stats-container');
+
+            // --- Initialization ---
+            applyTheme();
+            renderTasks();
+
+            // --- Event Listeners ---
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const text = input.value.trim();
+                if (text) {
+                    addTask(text);
+                    input.value = '';
+                } else {
+                    showMessage('Please enter a task.', 'error');
+                }
+            });
+
+            filterBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // Update active styling
+                    filterBtns.forEach(b => {
+                        b.classList.remove('text-blue-600', 'font-medium');
+                        b.classList.add('text-gray-500');
+                    });
+                    btn.classList.add('text-blue-600', 'font-medium');
+                    btn.classList.remove('text-gray-500');
+                    
+                    currentFilter = btn.dataset.filter;
+                    renderTasks();
+                });
+            });
+
+            clearCompletedBtn.addEventListener('click', clearCompleted);
+            
+            themeToggleBtn.addEventListener('click', toggleTheme);
+
+            // --- Core Functions ---
+            
+            function addTask(text) {
+                const newTask = {
+                    id: Date.now().toString(),
+                    text: text,
+                    completed: false
+                };
+                tasks.unshift(newTask); // Add to top
+                saveTasks();
+                renderTasks();
+                showMessage('Task added successfully', 'success');
+            }
+
+            function toggleTask(id) {
+                tasks = tasks.map(task => 
+                    task.id === id ? { ...task, completed: !task.completed } : task
+                );
+                saveTasks();
+                renderTasks();
+            }
+
+            function deleteTask(id) {
+                const li = document.getElementById(`task-${id}`);
+                // Add exit animation class
+                li.classList.add('task-leaving');
+                
+                // Wait for animation to finish before actually removing
+                setTimeout(() => {
+                    tasks = tasks.filter(task => task.id !== id);
+                    saveTasks();
+                    renderTasks();
+                }, 300); // Matches CSS transition duration
+            }
+
+            function clearCompleted() {
+                const hasCompleted = tasks.some(t => t.completed);
+                if (hasCompleted) {
+                    tasks = tasks.filter(task => !task.completed);
+                    saveTasks();
+                    renderTasks();
+                    showMessage('Cleared completed tasks', 'success');
+                }
+            }
+
+            function renderTasks() {
+                // Filter tasks
+                let filteredTasks = tasks;
+                if (currentFilter === 'active') {
+                    filteredTasks = tasks.filter(task => !task.completed);
+                } else if (currentFilter === 'completed') {
+                    filteredTasks = tasks.filter(task => task.completed);
+                }
+
+                // Update Stats
+                const total = tasks.length;
+                const completed = tasks.filter(task => task.completed).length;
+                totalTasksEl.textContent = total;
+                completedTasksEl.textContent = completed;
+
+                // Show/Hide Clear button
+                if (completed > 0) {
+                    clearCompletedBtn.classList.remove('hidden');
+                } else {
+                    clearCompletedBtn.classList.add('hidden');
+                }
+
+                // Handle Empty State
+                if (filteredTasks.length === 0) {
+                    taskList.innerHTML = '';
+                    emptyState.classList.remove('hidden');
+                    // Slight delay for smooth fade in
+                    setTimeout(() => emptyState.classList.add('opacity-100'), 50);
+                    return;
+                } else {
+                    emptyState.classList.remove('opacity-100');
+                    emptyState.classList.add('hidden');
+                }
+
+                // Render List
+                taskList.innerHTML = '';
+                filteredTasks.forEach(task => {
+                    const li = document.createElement('li');
+                    li.id = `task-${task.id}`;
+                    li.className = `task-item flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-shadow group ${task.completed ? 'completed' : ''}`;
+                    
+                    // Apply dark mode styles to item if active
+                    if(isDarkMode) {
+                        li.classList.remove('bg-white', 'border-gray-100');
+                        li.classList.add('bg-gray-800', 'border-gray-700');
+                    }
+
+                    li.innerHTML = `
+                        <div class="flex items-center flex-1 min-w-0 pr-4 cursor-pointer" onclick="document.getElementById('checkbox-${task.id}').click()">
+                            <input type="checkbox" id="checkbox-${task.id}" class="checkbox-custom mr-4" ${task.completed ? 'checked' : ''} onclick="event.stopPropagation();">
+                            <span class="task-text text-gray-800 font-medium truncate ${isDarkMode ? 'text-gray-200' : ''}">${escapeHTML(task.text)}</span>
+                        </div>
+                        <button class="delete-btn text-gray-400 hover:text-red-500 focus:outline-none p-2 rounded-lg hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all ${isDarkMode ? 'hover:bg-red-900/30' : ''}" aria-label="Delete Task">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </button>
+                    `;
+
+                    // Add enter animation class
+                    li.classList.add('task-entering');
+                    
+                    taskList.appendChild(li);
+
+                    // Trigger reflow to ensure animation plays
+                    void li.offsetWidth;
+                    li.classList.remove('task-entering');
+                    li.classList.add('task-entered');
+
+                    // Attach specific event listeners
+                    const checkbox = li.querySelector(`#checkbox-${task.id}`);
+                    checkbox.addEventListener('change', () => toggleTask(task.id));
+
+                    const deleteBtn = li.querySelector('.delete-btn');
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        deleteTask(task.id);
+                    });
+                });
+            }
+
+            // --- Helper Functions ---
+            
+            function saveTasks() {
+                localStorage.setItem('todo_tasks', JSON.stringify(tasks));
+            }
+
+            function escapeHTML(str) {
+                return str.replace(/[&<>'"]/g, 
+                    tag => ({
+                        '&': '&amp;',
+                        '<': '&lt;',
+                        '>': '&gt;',
+                        "'": '&#39;',
+                        '"': '&quot;'
+                    }[tag] || tag)
+                );
+            }
+
+            function showMessage(msg, type = 'info') {
+                const box = document.getElementById('message-box');
+                const text = document.getElementById('message-text');
+                const icon = document.getElementById('message-icon');
+
+                text.textContent = msg;
+
+                // Configure styling based on type
+                if (type === 'error') {
+                    box.classList.add('bg-red-600');
+                    box.classList.remove('bg-gray-800', 'bg-green-600');
+                    icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>';
+                } else if (type === 'success') {
+                    box.classList.add('bg-green-600');
+                    box.classList.remove('bg-gray-800', 'bg-red-600');
+                    icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>';
+                } else {
+                    box.classList.add('bg-gray-800');
+                    box.classList.remove('bg-red-600', 'bg-green-600');
+                    icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>';
+                }
+
+                box.classList.add('show');
+
+                // Hide after 3 seconds
+                setTimeout(() => {
+                    box.classList.remove('show');
+                }, 3000);
+            }
+
+            // --- Theme Management ---
+            function toggleTheme() {
+                isDarkMode = !isDarkMode;
+                localStorage.setItem('todo_dark_mode', isDarkMode);
+                applyTheme();
+                renderTasks(); // Re-render to update dynamic classes on list items
+            }
+
+            function applyTheme() {
+                if (isDarkMode) {
+                    document.body.classList.add('dark-mode');
+                    sunIcon.classList.remove('hidden');
+                    moonIcon.classList.add('hidden');
+                    
+                    // Update Container styling
+                    appContainer.classList.remove('bg-white');
+                    appContainer.classList.add('bg-gray-900', 'border', 'border-gray-700');
+                    
+                    // Header/Footer styling
+                    headerContainer.classList.remove('border-gray-100');
+                    headerContainer.classList.add('border-gray-800');
+                    footerContainer.classList.remove('bg-gray-50', 'border-gray-100');
+                    footerContainer.classList.add('bg-gray-900', 'border-gray-800');
+                    
+                    // Text styling
+                    appTitle.classList.remove('text-gray-800');
+                    appTitle.classList.add('text-white');
+                    statsContainer.classList.remove('text-gray-500');
+                    statsContainer.classList.add('text-gray-400');
+                    
+                    // Input styling
+                    input.classList.remove('bg-gray-50', 'border-gray-200', 'text-gray-700', 'focus:bg-white');
+                    input.classList.add('bg-gray-800', 'border-gray-700', 'text-white', 'focus:bg-gray-700');
+                    
+                } else {
+                    document.body.classList.remove('dark-mode');
+                    sunIcon.classList.add('hidden');
+                    moonIcon.classList.remove('hidden');
+                    
+                    // Revert Container styling
+                    appContainer.classList.add('bg-white');
+                    appContainer.classList.remove('bg-gray-900', 'border', 'border-gray-700');
+                    
+                    // Revert Header/Footer styling
+                    headerContainer.classList.add('border-gray-100');
+                    headerContainer.classList.remove('border-gray-800');
+                    footerContainer.classList.add('bg-gray-50', 'border-gray-100');
+                    footerContainer.classList.remove('bg-gray-900', 'border-gray-800');
+                    
+                    // Revert Text styling
+                    appTitle.classList.add('text-gray-800');
+                    appTitle.classList.remove('text-white');
+                    statsContainer.classList.add('text-gray-500');
+                    statsContainer.classList.remove('text-gray-400');
+                    
+                    // Revert Input styling
+                    input.classList.add('bg-gray-50', 'border-gray-200', 'text-gray-700', 'focus:bg-white');
+                    input.classList.remove('bg-gray-800', 'border-gray-700', 'text-white', 'focus:bg-gray-700');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
