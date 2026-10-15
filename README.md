@@ -7,7 +7,7 @@ Welcome to the vibe coding exercise. Please claim one of the widgets below by ad
 | Digital Clock | |
 | Calculator | |
 | Pomodoro Timer | |
-| Currency Converter | |
+| Currency Converter | sgiramata |
 | To Do List | kwyngaard |
 | [Custom Idea] | |
 
