@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Local Weather</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #0f1720;
+      color: #f4f7fb;
+    }
+    .widget {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+    .panel {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .hidden { display: none !important; }
+
+    /* Setup */
+    #setup {
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: linear-gradient(180deg, #1b2735 0%, #0f1720 100%);
+    }
+    .setup-card { width: 100%; text-align: center; }
+    .setup-card h1 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #9ec5ff;
+      margin-bottom: 6px;
+    }
+    .setup-card p {
+      font-size: 0.78rem;
+      color: #9aa7b5;
+      margin-bottom: 14px;
+    }
+    #zipInput {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #111827;
+      color: #fff;
+      font-size: 1.05rem;
+      text-align: center;
+      letter-spacing: 0.12em;
+      outline: none;
+    }
+    #zipInput:focus { border-color: #60a5fa; }
+    #zipForm button, .ghost-btn {
+      margin-top: 10px;
+      width: 100%;
+      padding: 10px 12px;
+      border: none;
+      border-radius: 8px;
+      background: #3b82f6;
+      color: #fff;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #zipForm button:disabled { opacity: 0.55; cursor: default; }
+    .error {
+      min-height: 1.1em;
+      margin-top: 8px;
+      font-size: 0.72rem;
+      color: #fca5a5;
+    }
+
+    /* Weather scene */
+    #sky {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+      transition: background 0.8s ease;
+    }
+    #sky.sunny { background: linear-gradient(#4ea8de, #87ceeb); }
+    #sky.partly-cloudy { background: linear-gradient(#5ba3c9, #9ec9dc); }
+    #sky.mostly-cloudy { background: linear-gradient(#6b7c8d, #8a9aaa); }
+    #sky.cloudy { background: linear-gradient(#4b5563, #6b7280); }
+    #sky.foggy { background: linear-gradient(#8b95a1, #c5ccd3); }
+    #sky.hazy { background: linear-gradient(#c4a35a, #e6c988); }
+    #sky.light-rain, #sky.med-rain { background: linear-gradient(#3d4d63, #5b6d82); }
+    #sky.heavy-rain { background: linear-gradient(#243040, #3a4a5c); }
+    #sky.light-snow, #sky.med-snow { background: linear-gradient(#7b8fa8, #c5d4e3); }
+    #sky.heavy-snow { background: linear-gradient(#5d7086, #a9b9c9); }
+    #sky.sleet { background: linear-gradient(#4a5a6c, #7d8c9c); }
+    #sky.ice { background: linear-gradient(#6a7d92, #b7c6d4); }
+    #sky.night { background: linear-gradient(#0b1220, #1e293b); }
+
+    .sun, .moon {
+      position: absolute;
+      border-radius: 50%;
+      display: none;
+    }
+    .sun {
+      top: 16px;
+      right: 22px;
+      width: 54px;
+      height: 54px;
+      background: radial-gradient(circle at 35% 35%, #fff7c2, #ffd166 45%, #f59e0b);
+      box-shadow: 0 0 24px 8px rgba(255, 209, 102, 0.55);
+      animation: pulse 4s ease-in-out infinite;
+    }
+    .sun:before {
+      content: "";
+      position: absolute;
+      inset: -10px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 209, 102, 0.35);
+      animation: spin 18s linear infinite;
+    }
+    .moon {
+      top: 18px;
+      right: 24px;
+      width: 40px;
+      height: 40px;
+      background: radial-gradient(circle at 30% 30%, #f8fafc, #cbd5e1);
+      box-shadow: -8px 2px 0 -2px #0b1220, 0 0 16px rgba(226, 232, 240, 0.4);
+    }
+    #sky.sunny .sun,
+    #sky.partly-cloudy .sun,
+    #sky.hazy .sun { display: block; }
+    #sky.night .sun { display: none; }
+    #sky.night .moon { display: block; }
+
+    .cloud {
+      position: absolute;
+      background: #e5eef6;
+      border-radius: 40px;
+      opacity: 0;
+      animation: drift 10s ease-in-out infinite;
+    }
+    .cloud:before, .cloud:after {
+      content: "";
+      position: absolute;
+      background: inherit;
+      border-radius: 50%;
+    }
+    .cloud.c1 { width: 78px; height: 24px; top: 22px; left: 18px; }
+    .cloud.c1:before { width: 30px; height: 30px; top: -16px; left: 10px; }
+    .cloud.c1:after { width: 38px; height: 38px; top: -20px; left: 28px; }
+    .cloud.c2 { width: 96px; height: 28px; top: 58px; left: 118px; animation-duration: 13s; animation-delay: -3s; }
+    .cloud.c2:before { width: 34px; height: 34px; top: -18px; left: 16px; }
+    .cloud.c2:after { width: 42px; height: 42px; top: -24px; left: 38px; }
+    .cloud.c3 { width: 120px; height: 32px; top: 36px; left: 48px; animation-duration: 16s; animation-delay: -6s; }
+    .cloud.c3:before { width: 42px; height: 42px; top: -22px; left: 18px; }
+    .cloud.c3:after { width: 52px; height: 52px; top: -28px; left: 44px; }
+    #sky.partly-cloudy .c1,
+    #sky.partly-cloudy .c2 { opacity: 0.85; display: block; }
+    #sky.mostly-cloudy .cloud,
+    #sky.cloudy .cloud,
+    #sky.light-rain .cloud,
+    #sky.med-rain .cloud,
+    #sky.heavy-rain .cloud,
+    #sky.sleet .cloud { opacity: 0.88; }
+    #sky.cloudy .cloud { background: #9aa6b4; }
+    #sky.mostly-cloudy .c3,
+    #sky.cloudy .c3 { display: block; }
+    #sky.light-snow .cloud,
+    #sky.med-snow .cloud,
+    #sky.heavy-snow .cloud,
+    #sky.ice .cloud { opacity: 0.75; background: #f1f5f9; }
+
+    #precip { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+    .drop, .flake, .pellet {
+      position: absolute;
+      top: -12px;
+      animation-name: fall;
+      animation-timing-function: linear;
+      animation-iteration-count: infinite;
+    }
+    .drop {
+      width: 2px;
+      height: 12px;
+      background: linear-gradient(rgba(255,255,255,0), #c7e0ff);
+      border-radius: 2px;
+    }
+    .flake {
+      width: 6px;
+      height: 6px;
+      background: #fff;
+      border-radius: 50%;
+      opacity: 0.9;
+    }
+    .pellet {
+      width: 3px;
+      height: 6px;
+      background: #dbeafe;
+      border-radius: 1px;
+    }
+
+    .fog-layer, .haze-layer, .ice-glaze {
+      position: absolute;
+      inset: 0;
+      display: none;
+      pointer-events: none;
+    }
+    .fog-layer {
+      background: linear-gradient(180deg, rgba(220,226,232,0.2), rgba(232,236,240,0.85));
+      animation: fogShift 8s ease-in-out infinite;
+    }
+    .haze-layer {
+      background: rgba(212, 163, 58, 0.28);
+    }
+    .ice-glaze {
+      background: linear-gradient(180deg, rgba(186, 230, 253, 0.15), rgba(255,255,255,0.35));
+    }
+    #sky.foggy .fog-layer { display: block; }
+    #sky.hazy .haze-layer { display: block; }
+    #sky.ice .ice-glaze { display: block; }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes drift {
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(18px); }
+    }
+    @keyframes fall {
+      from { transform: translateY(0); }
+      to { transform: translateY(220px); }
+    }
+    @keyframes fogShift {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+
+    .info {
+      flex: 0 0 auto;
+      padding: 8px 12px 10px;
+      background: rgba(8, 12, 18, 0.78);
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+    }
+    #clock {
+      font-size: 0.72rem;
+      color: #93c5fd;
+      letter-spacing: 0.04em;
+    }
+    #temp {
+      flex: 0 0 auto;
+      white-space: nowrap;
+      font-size: 1.55rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+    #condition {
+      font-size: 0.82rem;
+      text-transform: capitalize;
+      color: #e2e8f0;
+      margin-top: 2px;
+    }
+    #place {
+      font-size: 0.7rem;
+      color: #94a3b8;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .stats {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 6px;
+      font-size: 0.7rem;
+      color: #cbd5e1;
+    }
+    .ghost-btn {
+      width: auto;
+      margin: 0;
+      padding: 4px 8px;
+      background: transparent;
+      border: 1px solid #334155;
+      font-size: 0.68rem;
+      font-weight: 500;
+      color: #93c5fd;
+    }
+    .attrib {
+      font-size: 0.58rem;
+      color: #64748b;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="widget">
+    <div id="setup" class="panel">
+      <div class="setup-card">
+        <h1>Local Weather</h1>
+        <p>Enter your ZIP code to load current conditions.</p>
+        <form id="zipForm">
+          <input id="zipInput" name="zip" type="text" inputmode="numeric" maxlength="10" autocomplete="postal-code" placeholder="ZIP code" required />
+          <button type="submit" id="zipSubmit">Get weather</button>
+        </form>
+        <div class="error" id="setupError"></div>
+      </div>
+    </div>
+
+    <div id="weather" class="panel hidden">
+      <div id="sky" class="sunny">
+        <div class="sun"></div>
+        <div class="moon"></div>
+        <div class="cloud c1"></div>
+        <div class="cloud c2"></div>
+        <div class="cloud c3"></div>
+        <div id="precip"></div>
+        <div class="fog-layer"></div>
+        <div class="haze-layer"></div>
+        <div class="ice-glaze"></div>
+      </div>
+      <div class="info">
+        <div class="row">
+          <div>
+            <div id="clock">--:--</div>
+            <div id="condition">Loading</div>
+            <div id="place"></div>
+          </div>
+          <div id="temp">--°</div>
+        </div>
+        <div class="stats">
+          <span id="humidity">Humidity --%</span>
+          <button type="button" class="ghost-btn" id="changeZip">Change ZIP</button>
+        </div>
+        <div class="attrib">Weather: Open-Meteo</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var STORAGE_KEY = "kiza-weather-zip";
+    var setupEl = document.getElementById("setup");
+    var weatherEl = document.getElementById("weather");
+    var skyEl = document.getElementById("sky");
+    var precipEl = document.getElementById("precip");
+    var zipForm = document.getElementById("zipForm");
+    var zipInput = document.getElementById("zipInput");
+    var zipSubmit = document.getElementById("zipSubmit");
+    var setupError = document.getElementById("setupError");
+    var clockEl = document.getElementById("clock");
+    var tempEl = document.getElementById("temp");
+    var conditionEl = document.getElementById("condition");
+    var placeEl = document.getElementById("place");
+    var humidityEl = document.getElementById("humidity");
+    var refreshTimer = null;
+
+    function showSetup(message) {
+      setupEl.classList.remove("hidden");
+      weatherEl.classList.add("hidden");
+      setupError.textContent = message || "";
+      zipInput.focus();
+    }
+
+    function showWeather() {
+      setupEl.classList.add("hidden");
+      weatherEl.classList.remove("hidden");
+    }
+
+    function pad(n) {
+      return n < 10 ? "0" + n : String(n);
+    }
+
+    function tickClock() {
+      var now = new Date();
+      var hours = now.getHours();
+      var ampm = hours >= 12 ? "PM" : "AM";
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      clockEl.textContent = hours + ":" + pad(now.getMinutes()) + ":" + pad(now.getSeconds()) + " " + ampm;
+    }
+
+    function normalizeZip(value) {
+      var zip = String(value || "").trim().toUpperCase();
+      if (/^\d{5}(-\d{4})?$/.test(zip)) return zip.slice(0, 5);
+      if (/^[A-Z]\d[A-Z][ -]?\d[A-Z]\d$/.test(zip)) return zip.replace(/\s+/g, "");
+      return "";
+    }
+
+    function mapCondition(code, cloudCover, visibility, isDay) {
+      var n = Number(code);
+      if (n === 45 || n === 48) return { key: "foggy", label: "Foggy" };
+      if (n === 51 || n === 61 || n === 80) return { key: "light-rain", label: "Light rain" };
+      if (n === 53 || n === 63 || n === 81) return { key: "med-rain", label: "Moderate rain" };
+      if (n === 55 || n === 65 || n === 82 || n === 95) return { key: "heavy-rain", label: "Heavy rain" };
+      if (n === 56 || n === 57) return { key: "sleet", label: "Sleet" };
+      if (n === 66 || n === 67 || n === 96 || n === 99) return { key: "ice", label: "Ice" };
+      if (n === 71 || n === 77 || n === 85) return { key: "light-snow", label: "Light snow" };
+      if (n === 73) return { key: "med-snow", label: "Moderate snow" };
+      if (n === 75 || n === 86) return { key: "heavy-snow", label: "Heavy snow" };
+
+      if (visibility != null && visibility < 5000 && n <= 3) {
+        return { key: "hazy", label: "Hazy" };
+      }
+      if (n === 3 || cloudCover >= 86) return { key: "cloudy", label: "Cloudy" };
+      if (n === 2 || cloudCover >= 60) return { key: "mostly-cloudy", label: "Mostly cloudy" };
+      if (n === 1 || cloudCover >= 25) return { key: "partly-cloudy", label: "Partly cloudy" };
+      return {
+        key: "sunny",
+        label: isDay ? "Sunny" : "Clear"
+      };
+    }
+
+    function clearPrecip() {
+      precipEl.innerHTML = "";
+    }
+
+    function spawnPrecip(kind, count, extraClass) {
+      clearPrecip();
+      var i;
+      for (i = 0; i < count; i++) {
+        var el = document.createElement("span");
+        el.className = extraClass;
+        el.style.left = Math.random() * 100 + "%";
+        el.style.animationDuration = (kind === "drop" ? 0.55 : 1.4) + Math.random() * (kind === "drop" ? 0.7 : 2.2) + "s";
+        el.style.animationDelay = (-Math.random() * 3) + "s";
+        precipEl.appendChild(el);
+      }
+    }
+
+    function renderScene(mapped, isDay) {
+      skyEl.className = mapped.key + (isDay ? "" : " night");
+      if (mapped.key === "light-rain") spawnPrecip("drop", 18, "drop");
+      else if (mapped.key === "med-rain") spawnPrecip("drop", 32, "drop");
+      else if (mapped.key === "heavy-rain") spawnPrecip("drop", 52, "drop");
+      else if (mapped.key === "light-snow") spawnPrecip("flake", 16, "flake");
+      else if (mapped.key === "med-snow") spawnPrecip("flake", 28, "flake");
+      else if (mapped.key === "heavy-snow") spawnPrecip("flake", 46, "flake");
+      else if (mapped.key === "sleet") spawnPrecip("drop", 28, "pellet");
+      else if (mapped.key === "ice") spawnPrecip("drop", 22, "pellet");
+      else clearPrecip();
+    }
+
+    function geocodeFromOpenMeteo(zip) {
+      var geoUrl = "https://geocoding-api.open-meteo.com/v1/search?name=" +
+        encodeURIComponent(zip) + "&count=5&language=en&format=json" +
+        (/^\d{5}$/.test(zip) ? "&countryCode=US" : "");
+      return fetch(geoUrl).then(function (res) {
+        if (!res.ok) throw new Error("Location lookup failed");
+        return res.json();
+      }).then(function (data) {
+        var results = data.results || [];
+        var match = null;
+        var i;
+        for (i = 0; i < results.length; i++) {
+          var item = results[i];
+          var posts = item.postcodes || [];
+          if (posts.indexOf(zip) !== -1 || item.name === zip) {
+            match = item;
+            break;
+          }
+        }
+        if (!match) match = results[0];
+        if (!match) throw new Error("ZIP code not found");
+        return {
+          lat: match.latitude,
+          lon: match.longitude,
+          name: match.name,
+          region: match.admin1 || match.country || ""
+        };
+      });
+    }
+
+    function geocodeZip(zip) {
+      if (!/^\d{5}$/.test(zip)) return geocodeFromOpenMeteo(zip);
+      return fetch("https://api.zippopotam.us/us/" + zip).then(function (res) {
+        if (!res.ok) throw new Error("not found");
+        return res.json();
+      }).then(function (data) {
+        var place = (data.places && data.places[0]) || null;
+        if (!place) throw new Error("ZIP code not found");
+        return {
+          lat: parseFloat(place.latitude),
+          lon: parseFloat(place.longitude),
+          name: place["place name"],
+          region: place["state abbreviation"] || place.state || "US"
+        };
+      }).catch(function () {
+        return geocodeFromOpenMeteo(zip);
+      });
+    }
+
+    function fetchForecast(place) {
+      var url = "https://api.open-meteo.com/v1/forecast?latitude=" + place.lat +
+        "&longitude=" + place.lon +
+        "&current=temperature_2m,relative_humidity_2m,weather_code,cloud_cover,visibility,is_day" +
+        "&temperature_unit=fahrenheit&timezone=auto";
+      return fetch(url).then(function (res) {
+        if (!res.ok) throw new Error("Weather lookup failed");
+        return res.json();
+      }).then(function (data) {
+        var cur = data.current || {};
+        return {
+          temp: Math.round(cur.temperature_2m),
+          humidity: cur.relative_humidity_2m,
+          code: cur.weather_code,
+          cloudCover: cur.cloud_cover,
+          visibility: cur.visibility,
+          isDay: cur.is_day === 1,
+          place: place
+        };
+      });
+    }
+
+    function applyWeather(result) {
+      var mapped = mapCondition(result.code, result.cloudCover, result.visibility, result.isDay);
+      renderScene(mapped, result.isDay);
+      tempEl.textContent = (isFinite(result.temp) ? result.temp : "--") + "°";
+      conditionEl.textContent = mapped.label;
+      humidityEl.textContent = "Humidity " + (result.humidity != null ? result.humidity : "--") + "%";
+      placeEl.textContent = result.place.name + (result.place.region ? ", " + result.place.region : "");
+      showWeather();
+    }
+
+    function loadWeather(zip) {
+      setupError.textContent = "";
+      zipSubmit.disabled = true;
+      zipSubmit.textContent = "Loading…";
+      return geocodeZip(zip).then(fetchForecast).then(function (result) {
+        try {
+          if (window.localStorage) localStorage.setItem(STORAGE_KEY, zip);
+        } catch (err) {}
+        applyWeather(result);
+        if (refreshTimer) clearInterval(refreshTimer);
+        refreshTimer = setInterval(function () { loadWeather(zip); }, 10 * 60 * 1000);
+      }).catch(function (err) {
+        showSetup(err.message || "Could not load weather. Check the ZIP and try again.");
+      }).then(function () {
+        zipSubmit.disabled = false;
+        zipSubmit.textContent = "Get weather";
+      });
+    }
+
+    zipForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var zip = normalizeZip(zipInput.value);
+      if (!zip) {
+        setupError.textContent = "Enter a 5-digit US ZIP or Canadian postal code.";
+        return;
+      }
+      loadWeather(zip);
+    });
+
+    document.getElementById("changeZip").addEventListener("click", function () {
+      try {
+        if (window.localStorage) localStorage.removeItem(STORAGE_KEY);
+      } catch (err) {}
+      if (refreshTimer) clearInterval(refreshTimer);
+      zipInput.value = "";
+      showSetup("");
+    });
+
+    tickClock();
+    setInterval(tickClock, 1000);
+
+    var saved = "";
+    try {
+      saved = (window.localStorage && localStorage.getItem(STORAGE_KEY)) || "";
+    } catch (err) {
+      saved = "";
+    }
+    if (saved) {
+      zipInput.value = saved;
+      conditionEl.textContent = "Loading";
+      showWeather();
+      loadWeather(saved);
+    } else {
+      showSetup("");
+    }
+  </script>
+</body>
+</html>
