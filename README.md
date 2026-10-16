@@ -6,7 +6,7 @@ Welcome to the vibe coding exercise. Please claim one of the widgets below by ad
 | :--- | :--- |
 | Digital Clock | Cbankaso |
 | Calculator | |
-| Pomodoro Timer | |
+| Pomodoro Timer | oakinyele |
 | Currency Converter | sgiramata |
 | To Do List | kwyngaard |
 | Local Weather | rpoelking |
