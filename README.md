@@ -9,6 +9,7 @@ Welcome to the vibe coding exercise. Please claim one of the widgets below by ad
 | Pomodoro Timer | |
 | Currency Converter | sgiramata |
 | To Do List | kwyngaard |
+| Local Weather | rpoelking |
 | [Custom Idea] | |
 
 ## How to add your widget:
