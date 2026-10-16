@@ -4,7 +4,7 @@ Welcome to the vibe coding exercise. Please claim one of the widgets below by ad
 
 | Widget Idea | Developer |
 | :--- | :--- |
-| Digital Clock | |
+| Digital Clock | Cbankaso |
 | Calculator | |
 | Pomodoro Timer | |
 | Currency Converter | |
