@@ -5,13 +5,15 @@ Welcome to the vibe coding exercise. Please claim one of the widgets below by ad
 | Widget Idea | Developer |
 | :--- | :--- |
 | Digital Clock | Cbankaso |
-| Calculator | |
+| Calculator |Abdou |
 | Pomodoro Timer | oakinyele |
 | Currency Converter | sgiramata |
 | To Do List | kwyngaard |
 | Local Weather | rpoelking |
 | [Custom Idea] | |
 
+
 ## How to add your widget:
+
 1. Save your AI-generated HTML file in the `widgets/` folder.
 2. Edit `index.html` and add an iframe pointing to your file.
