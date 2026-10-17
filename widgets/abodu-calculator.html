@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Calculator</title>
+    <script>
+      // Apply the saved (or system) theme before first paint to avoid a flash
+      ;(function () {
+        var theme = null
+        try {
+          theme = localStorage.getItem('abdou_calc_theme')
+        } catch (e) {}
+        if (theme !== 'light' && theme !== 'dark') {
+          theme =
+            window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light'
+        }
+        document.documentElement.setAttribute('data-theme', theme)
+      })()
+    </script>
+    <style>
+      :root {
+        --bg: #eef1f6;
+        --card-bg: #ffffff;
+        --border: #e3e7ee;
+        --display-bg: #f5f7fb;
+        --text: #1b1f2a;
+        --text-muted: #6b7280;
+        --key-bg: #f1f3f8;
+        --key-hover: #e4e8f0;
+        --fn-bg: #e1e5ee;
+        --fn-hover: #d3d9e5;
+        --accent: #6366f1;
+        --accent-hover: #4f46e5;
+        --accent-text: #ffffff;
+        --shadow: 0 12px 30px rgba(31, 41, 55, 0.12);
+      }
+      [data-theme='dark'] {
+        --bg: #0f1117;
+        --card-bg: #1a1d27;
+        --border: #2a2f3d;
+        --display-bg: #131620;
+        --text: #f3f4f6;
+        --text-muted: #9ca3af;
+        --key-bg: #252a37;
+        --key-hover: #2f3546;
+        --fn-bg: #323849;
+        --fn-hover: #3d4457;
+        --accent: #6366f1;
+        --accent-hover: #818cf8;
+        --accent-text: #ffffff;
+        --shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+          Arial, sans-serif;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        min-height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: clamp(6px, 3vmin, 24px);
+        background-color: var(--bg);
+        color: var(--text);
+        transition:
+          background-color 0.25s ease,
+          color 0.25s ease;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .calculator {
+        width: 100%;
+        max-width: 360px;
+        display: flex;
+        flex-direction: column;
+        gap: clamp(6px, 2vmin, 14px);
+        padding: clamp(10px, 3.5vmin, 20px);
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: clamp(12px, 4vmin, 22px);
+        box-shadow: var(--shadow);
+        transition:
+          background-color 0.25s ease,
+          border-color 0.25s ease;
+      }
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .header h2 {
+        font-size: clamp(0.8rem, 2.8vmin, 1rem);
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+      .header-actions {
+        display: flex;
+        gap: 6px;
+      }
+      .icon-btn {
+        width: clamp(26px, 7vmin, 34px);
+        height: clamp(26px, 7vmin, 34px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        border-radius: 8px;
+        background: var(--key-bg);
+        color: var(--text);
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+      }
+      .icon-btn:hover {
+        background: var(--key-hover);
+      }
+      .icon-btn svg {
+        width: 55%;
+        height: 55%;
+      }
+      [data-theme='dark'] .icon-moon,
+      [data-theme='light'] .icon-sun {
+        display: none;
+      }
+      .display {
+        min-width: 0;
+        padding: clamp(6px, 2vmin, 14px) clamp(10px, 3vmin, 16px);
+        background: var(--display-bg);
+        border: 1px solid var(--border);
+        border-radius: clamp(8px, 2.5vmin, 14px);
+        text-align: right;
+        transition:
+          background-color 0.25s ease,
+          border-color 0.25s ease;
+      }
+      .expression {
+        min-height: 1.25em;
+        font-size: clamp(0.7rem, 2.6vmin, 0.95rem);
+        color: var(--text-muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .value {
+        font-size: clamp(1.6rem, 9vmin, 2.8rem);
+        font-weight: 300;
+        line-height: 1.15;
+        white-space: nowrap;
+        overflow: hidden;
+        font-variant-numeric: tabular-nums;
+      }
+      .keys {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: clamp(5px, 1.8vmin, 12px);
+      }
+      .key {
+        aspect-ratio: 1.15 / 1;
+        min-width: 0;
+        border: none;
+        border-radius: clamp(8px, 2.5vmin, 14px);
+        background: var(--key-bg);
+        color: var(--text);
+        font-size: clamp(0.95rem, 4.2vmin, 1.35rem);
+        font-weight: 500;
+        cursor: pointer;
+        user-select: none;
+        touch-action: manipulation;
+        transition:
+          background-color 0.15s ease,
+          color 0.15s ease,
+          transform 0.08s ease;
+      }
+      .key:hover {
+        background: var(--key-hover);
+      }
+      .key:active,
+      .key.pressed {
+        transform: scale(0.94);
+      }
+      .key:focus-visible,
+      .icon-btn:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .key.fn {
+        background: var(--fn-bg);
+      }
+      .key.fn:hover {
+        background: var(--fn-hover);
+      }
+      .key.op,
+      .key.equals {
+        background: var(--accent);
+        color: var(--accent-text);
+      }
+      .key.op:hover,
+      .key.equals:hover {
+        background: var(--accent-hover);
+      }
+      .key.op.active {
+        background: var(--card-bg);
+        color: var(--accent);
+        box-shadow: inset 0 0 0 2px var(--accent);
+      }
+      .key.zero {
+        grid-column: span 2;
+        aspect-ratio: auto;
+      }
+
+      /* Short viewports (e.g. the 320x320 dashboard iframe): fill the height
+       and let the key rows flex instead of keeping square-ish keys */
+      @media (max-height: 640px) {
+        body {
+          padding: clamp(4px, 2vmin, 16px);
+        }
+        .calculator {
+          height: 100%;
+          max-height: 560px;
+          gap: clamp(5px, 1.6vh, 12px);
+          padding: clamp(8px, 2.6vh, 18px);
+        }
+        .display {
+          padding: clamp(4px, 1.4vh, 12px) clamp(10px, 3vmin, 16px);
+        }
+        .value {
+          font-size: clamp(1.3rem, 9vh, 2.6rem);
+        }
+        .keys {
+          flex: 1;
+          min-height: 0;
+          grid-template-rows: repeat(5, 1fr);
+          gap: clamp(4px, 1.4vh, 10px);
+        }
+        .key {
+          aspect-ratio: auto;
+          min-height: 0;
+          font-size: clamp(0.85rem, 5vh, 1.3rem);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="calculator" aria-label="Calculator">
+      <div class="header">
+        <h2>Calculator</h2>
+        <div class="header-actions">
+          <button
+            class="icon-btn"
+            id="backspace"
+            aria-label="Backspace"
+            title="Backspace"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" />
+              <line x1="18" y1="9" x2="12" y2="15" />
+              <line x1="12" y1="9" x2="18" y2="15" />
+            </svg>
+          </button>
+          <button
+            class="icon-btn"
+            id="theme-toggle"
+            aria-label="Toggle dark mode"
+            title="Toggle theme"
+          >
+            <svg
+              class="icon-moon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+            <svg
+              class="icon-sun"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="5" />
+              <line x1="12" y1="1" x2="12" y2="3" />
+              <line x1="12" y1="21" x2="12" y2="23" />
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+              <line x1="1" y1="12" x2="3" y2="12" />
+              <line x1="21" y1="12" x2="23" y2="12" />
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="display">
+        <div class="expression" id="expression" aria-live="polite"></div>
+        <div class="value" id="value" aria-live="polite">0</div>
+      </div>
+
+      <div class="keys">
+        <button class="key fn" data-action="clear" id="clear">AC</button>
+        <button class="key fn" data-action="sign" aria-label="Toggle sign">
+          ±
+        </button>
+        <button class="key fn" data-action="percent" aria-label="Percent">
+          %
+        </button>
+        <button class="key op" data-op="/" aria-label="Divide">÷</button>
+
+        <button class="key" data-digit="7">7</button>
+        <button class="key" data-digit="8">8</button>
+        <button class="key" data-digit="9">9</button>
+        <button class="key op" data-op="*" aria-label="Multiply">×</button>
+
+        <button class="key" data-digit="4">4</button>
+        <button class="key" data-digit="5">5</button>
+        <button class="key" data-digit="6">6</button>
+        <button class="key op" data-op="-" aria-label="Subtract">−</button>
+
+        <button class="key" data-digit="1">1</button>
+        <button class="key" data-digit="2">2</button>
+        <button class="key" data-digit="3">3</button>
+        <button class="key op" data-op="+" aria-label="Add">+</button>
+
+        <button class="key zero" data-digit="0">0</button>
+        <button class="key" data-action="decimal" aria-label="Decimal point">
+          .
+        </button>
+        <button class="key equals" data-action="equals" aria-label="Equals">
+          =
+        </button>
+      </div>
+    </main>
+
+    <script>
+      ;(function () {
+        var MAX_DIGITS = 15
+        var OP_SYMBOLS = { '+': '+', '-': '−', '*': '×', '/': '÷' }
+
+        var valueEl = document.getElementById('value')
+        var expressionEl = document.getElementById('expression')
+        var clearBtn = document.getElementById('clear')
+        var opButtons = document.querySelectorAll('[data-op]')
+
+        var state
+
+        function reset() {
+          state = {
+            current: '0', // raw string being shown / typed
+            previous: null, // left operand (number)
+            operator: null, // pending operator
+            waiting: false, // true right after an operator: next digit starts a new number
+            justEvaluated: false,
+            lastOperator: null, // for repeated "="
+            lastOperand: null,
+            expression: '',
+            error: false,
+          }
+        }
+
+        // ---------- number helpers ----------
+        function compute(a, op, b) {
+          switch (op) {
+            case '+':
+              return a + b
+            case '-':
+              return a - b
+            case '*':
+              return a * b
+            case '/':
+              return b === 0 ? NaN : a / b
+          }
+          return b
+        }
+
+        // Number -> raw string, trimming float noise (0.1 + 0.2 -> "0.3")
+        function toRaw(n) {
+          if (!isFinite(n)) return null
+          n = parseFloat(n.toPrecision(12))
+          if (n === 0) return '0'
+          var abs = Math.abs(n)
+          if (abs >= 1e15 || abs < 1e-6) {
+            return n.toExponential(6).replace(/\.?0+e/, 'e')
+          }
+          return String(n)
+        }
+
+        // Raw string -> display string with thousands separators
+        function pretty(raw) {
+          if (raw.indexOf('e') !== -1) return raw
+          var negative = raw.charAt(0) === '-'
+          var body = negative ? raw.slice(1) : raw
+          var parts = body.split('.')
+          var intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+          return (
+            (negative ? '-' : '') +
+            intPart +
+            (parts.length > 1 ? '.' + parts[1] : '')
+          )
+        }
+
+        function prettyNum(n) {
+          return pretty(toRaw(n))
+        }
+
+        function setError() {
+          reset()
+          state.error = true
+        }
+
+        // Returns true if the result was valid
+        function setResult(n) {
+          var raw = toRaw(n)
+          if (raw === null) {
+            setError()
+            return false
+          }
+          state.current = raw
+          return true
+        }
+
+        // ---------- actions ----------
+        function inputDigit(d) {
+          if (state.error) reset()
+          if (state.justEvaluated) {
+            reset()
+            state.current = d
+            return
+          }
+          if (state.waiting) {
+            state.current = d
+            state.waiting = false
+            return
+          }
+          if (state.current.replace(/[-.]/g, '').length >= MAX_DIGITS) return
+          if (state.current === '0') state.current = d
+          else if (state.current === '-0') state.current = '-' + d
+          else state.current += d
+        }
+
+        function inputDecimal() {
+          if (state.error) reset()
+          if (state.justEvaluated) {
+            reset()
+            state.current = '0.'
+            return
+          }
+          if (state.waiting) {
+            state.current = '0.'
+            state.waiting = false
+            return
+          }
+          if (
+            state.current.indexOf('.') === -1 &&
+            state.current.indexOf('e') === -1
+          ) {
+            state.current += '.'
+          }
+        }
+
+        function setOperator(op) {
+          if (state.error) return
+          var value = parseFloat(state.current)
+
+          if (state.operator && !state.waiting) {
+            // Chain: 2 + 3 × -> evaluate 2 + 3 first
+            var result = compute(state.previous, state.operator, value)
+            if (!setResult(result)) return
+            state.previous = parseFloat(state.current)
+          } else if (!state.operator) {
+            state.previous = value
+          }
+          // If waiting with an operator already set, this just swaps the operator.
+
+          state.operator = op
+          state.waiting = true
+          state.justEvaluated = false
+          state.expression = prettyNum(state.previous) + ' ' + OP_SYMBOLS[op]
+        }
+
+        function equals() {
+          if (state.error) return
+          var a, b, op
+
+          if (state.operator) {
+            a = state.previous
+            b = parseFloat(state.current)
+            op = state.operator
+          } else if (state.justEvaluated && state.lastOperator) {
+            // Repeat last operation: 2 + 3 = = -> 8
+            a = parseFloat(state.current)
+            b = state.lastOperand
+            op = state.lastOperator
+          } else {
+            return
+          }
+
+          var expression =
+            prettyNum(a) + ' ' + OP_SYMBOLS[op] + ' ' + prettyNum(b) + ' ='
+          if (!setResult(compute(a, op, b))) return
+
+          state.expression = expression
+          state.lastOperator = op
+          state.lastOperand = b
+          state.previous = null
+          state.operator = null
+          state.waiting = false
+          state.justEvaluated = true
+        }
+
+        function toggleSign() {
+          if (state.error) return
+          if (state.waiting) {
+            state.current = '-0'
+            state.waiting = false
+            return
+          }
+          state.current =
+            state.current.charAt(0) === '-'
+              ? state.current.slice(1)
+              : '-' + state.current
+        }
+
+        function percent() {
+          if (state.error) return
+          if (!setResult(parseFloat(state.current) / 100)) return
+          state.waiting = false
+        }
+
+        function backspace() {
+          if (state.error) {
+            reset()
+            return
+          }
+          if (state.waiting || state.justEvaluated) return
+          var next = state.current.slice(0, -1)
+          state.current = next === '' || next === '-' ? '0' : next
+        }
+
+        function isEntryInProgress() {
+          return (
+            !state.error &&
+            !state.waiting &&
+            !state.justEvaluated &&
+            state.current !== '0'
+          )
+        }
+
+        function clear() {
+          if (isEntryInProgress() && state.operator) {
+            // "C": clear just the current entry, keep the pending operation
+            state.current = '0'
+          } else {
+            reset()
+          }
+        }
+
+        // ---------- rendering ----------
+        function fitValue() {
+          valueEl.style.fontSize = ''
+          var available = valueEl.clientWidth
+          var needed = valueEl.scrollWidth
+          if (needed > available && available > 0) {
+            var base = parseFloat(getComputedStyle(valueEl).fontSize)
+            valueEl.style.fontSize =
+              Math.max(12, (base * available) / needed) + 'px'
+          }
+        }
+
+        function render() {
+          valueEl.textContent = state.error ? 'Error' : pretty(state.current)
+          expressionEl.textContent = state.expression
+          clearBtn.textContent =
+            isEntryInProgress() && state.operator ? 'C' : 'AC'
+          clearBtn.setAttribute(
+            'aria-label',
+            clearBtn.textContent === 'C' ? 'Clear entry' : 'All clear',
+          )
+
+          for (var i = 0; i < opButtons.length; i++) {
+            var btn = opButtons[i]
+            btn.classList.toggle(
+              'active',
+              state.waiting && btn.getAttribute('data-op') === state.operator,
+            )
+          }
+          fitValue()
+        }
+
+        function handle(fn, arg) {
+          fn(arg)
+          render()
+        }
+
+        // ---------- events ----------
+        document.querySelector('.keys').addEventListener('click', function (e) {
+          var btn = e.target.closest('button')
+          if (!btn) return
+          if (btn.hasAttribute('data-digit'))
+            return handle(inputDigit, btn.getAttribute('data-digit'))
+          if (btn.hasAttribute('data-op'))
+            return handle(setOperator, btn.getAttribute('data-op'))
+          switch (btn.getAttribute('data-action')) {
+            case 'decimal':
+              return handle(inputDecimal)
+            case 'equals':
+              return handle(equals)
+            case 'clear':
+              return handle(clear)
+            case 'sign':
+              return handle(toggleSign)
+            case 'percent':
+              return handle(percent)
+          }
+        })
+
+        document
+          .getElementById('backspace')
+          .addEventListener('click', function () {
+            handle(backspace)
+          })
+
+        function flash(selector) {
+          var btn = document.querySelector(selector)
+          if (!btn) return
+          btn.classList.add('pressed')
+          setTimeout(function () {
+            btn.classList.remove('pressed')
+          }, 120)
+        }
+
+        document.addEventListener('keydown', function (e) {
+          if (e.ctrlKey || e.metaKey || e.altKey) return
+          var k = e.key
+
+          if (/^[0-9]$/.test(k)) {
+            handle(inputDigit, k)
+            flash('[data-digit="' + k + '"]')
+          } else if (k === '.' || k === ',') {
+            handle(inputDecimal)
+            flash('[data-action="decimal"]')
+          } else if (
+            k === '+' ||
+            k === '-' ||
+            k === '*' ||
+            k === '/' ||
+            k === 'x' ||
+            k === 'X'
+          ) {
+            var op = k === 'x' || k === 'X' ? '*' : k
+            handle(setOperator, op)
+            flash('[data-op="' + op + '"]')
+          } else if (k === 'Enter' || k === '=') {
+            handle(equals)
+            flash('[data-action="equals"]')
+          } else if (k === 'Backspace') {
+            handle(backspace)
+            flash('#backspace')
+          } else if (k === 'Escape' || k === 'Delete') {
+            handle(clear)
+            flash('#clear')
+          } else if (k === '%') {
+            handle(percent)
+            flash('[data-action="percent"]')
+          } else {
+            return
+          }
+          // Stop Enter from also "clicking" a focused button, and "/" from opening quick find
+          e.preventDefault()
+        })
+
+        // ---------- theme ----------
+        var root = document.documentElement
+        var themeToggle = document.getElementById('theme-toggle')
+
+        function updateThemeLabel() {
+          var dark = root.getAttribute('data-theme') === 'dark'
+          themeToggle.setAttribute(
+            'aria-label',
+            dark ? 'Switch to light mode' : 'Switch to dark mode',
+          )
+        }
+
+        themeToggle.addEventListener('click', function () {
+          var next =
+            root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'
+          root.setAttribute('data-theme', next)
+          try {
+            localStorage.setItem('abdou_calc_theme', next)
+          } catch (e) {}
+          updateThemeLabel()
+        })
+
+        window.addEventListener('resize', fitValue)
+
+        reset()
+        updateThemeLabel()
+        render()
+      })()
+    </script>
+  </body>
+</html>
