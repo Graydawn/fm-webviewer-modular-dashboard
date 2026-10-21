@@ -2,15 +2,16 @@
 
 Welcome to the vibe coding exercise. Please claim one of the widgets below by adding your name to the "Developer" column, or invent your own!
 
-| Widget Idea | Developer |
-| :--- | :--- |
-| Digital Clock | Cbankaso |
-| Calculator |Abdou |
-| Pomodoro Timer | oakinyele |
-| Currency Converter | sgiramata |
-| To Do List | kwyngaard |
-| Local Weather | rpoelking |
-| [Custom Idea] | |
+| Widget Idea        | Developer     |
+|:-------------------|:--------------|
+| Digital Clock      | Cbankaso      |
+| Calculator         | Abdou         |
+| Pomodoro Timer     | oakinyele     |
+| Currency Converter | sgiramata     |
+| To Do List         | kwyngaard     |
+| Local Weather      | rpoelking     |
+| Dice Roller        | jnyirarukundo |
+| [Custom Idea]      |               |
 
 
 ## How to add your widget:
