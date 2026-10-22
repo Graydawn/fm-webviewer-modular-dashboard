@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dice Roller v2</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; }
+        body {
+            background: #14161a;
+            color: #e8e6df;
+            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            padding: 16px;
+        }
+        #die {
+            width: 200px;
+            height: 200px;
+            max-width: 45vmin;
+            max-height: 45vmin;
+            filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.6));
+        }
+        #die.rolling { animation: shake 0.5s ease-in-out; }
+        @keyframes shake {
+            0%   { transform: rotate(0) scale(1); }
+            25%  { transform: rotate(-18deg) scale(1.08); }
+            50%  { transform: rotate(14deg) scale(0.95); }
+            75%  { transform: rotate(-8deg) scale(1.04); }
+            100% { transform: rotate(0) scale(1); }
+        }
+        #result {
+            font-size: 56px;
+            font-weight: 700;
+            line-height: 1;
+        }
+        button {
+            font: inherit;
+            font-size: 20px;
+            font-weight: 600;
+            padding: 12px 40px;
+            border: none;
+            border-radius: 999px;
+            background: #e0a526;
+            color: #1a1405;
+            cursor: pointer;
+        }
+        button:hover { filter: brightness(1.1); }
+        button:active { transform: scale(0.97); }
+        button:focus-visible { outline: 3px solid #e8e6df; outline-offset: 3px; }
+        button:disabled { opacity: 0.6; cursor: default; }
+        @media (prefers-reduced-motion: reduce) {
+            #die.rolling { animation: none; }
+        }
+    </style>
+</head>
+<body>
+<!-- The die is an SVG, so the dots don't depend on any CSS layout -->
+<svg id="die" viewBox="0 0 100 100" aria-hidden="true">
+    <rect x="2" y="2" width="96" height="96" rx="18" ry="18" fill="#f2efe6"/>
+    <circle cx="27" cy="27" r="9" fill="#14161a"/>
+    <circle cx="50" cy="27" r="9" fill="#14161a"/>
+    <circle cx="73" cy="27" r="9" fill="#14161a"/>
+    <circle cx="27" cy="50" r="9" fill="#14161a"/>
+    <circle cx="50" cy="50" r="9" fill="#14161a"/>
+    <circle cx="73" cy="50" r="9" fill="#14161a"/>
+    <circle cx="27" cy="73" r="9" fill="#14161a"/>
+    <circle cx="50" cy="73" r="9" fill="#14161a"/>
+    <circle cx="73" cy="73" r="9" fill="#14161a"/>
+</svg>
+<div id="result" aria-live="polite">1</div>
+<button id="roll" type="button">Roll</button>
+
+<script>
+    // Which of the 9 dots (left-to-right, top-to-bottom) show for each value
+    var PIPS = {
+        1: [4],
+        2: [0, 8],
+        3: [0, 4, 8],
+        4: [0, 2, 6, 8],
+        5: [0, 2, 4, 6, 8],
+        6: [0, 2, 3, 5, 6, 8]
+    };
+
+    var die = document.getElementById("die");
+    var dots = die.querySelectorAll("circle");
+    var result = document.getElementById("result");
+    var rollBtn = document.getElementById("roll");
+
+    function show(n) {
+        for (var i = 0; i < dots.length; i++) {
+            dots[i].setAttribute("opacity", PIPS[n].indexOf(i) !== -1 ? "1" : "0");
+        }
+        result.textContent = n;
+    }
+
+    function roll() {
+        rollBtn.disabled = true;
+        die.classList.remove("rolling");
+        void die.getBoundingClientRect(); // restart animation
+        die.classList.add("rolling");
+
+        var ticks = 0;
+        var timer = setInterval(function () {
+            show(Math.floor(Math.random() * 6) + 1);
+            ticks++;
+            if (ticks >= 8) {
+                clearInterval(timer);
+                rollBtn.disabled = false;
+            }
+        }, 60);
+    }
+
+    rollBtn.addEventListener("click", roll);
+    show(1);
+</script>
+</body>
+</html>
